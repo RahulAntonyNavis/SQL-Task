@@ -206,4 +206,32 @@ insert into asset_lookup (ISIN, CUSIP, SEDOL) values ('INE089A01023', '', '61009
 insert into asset_lookup (ISIN, CUSIP, SEDOL) values ('INE021A01026', '', '6124916');
 insert into asset_lookup (ISIN, CUSIP, SEDOL) values ('INE423A01024', '', '6437324');
 
+merge into asset_register_links target using (
+select al.cusip as stock_code,
+       ar.stock_id,
+       ar.description from asset_lookup al
+       join asset_register_links ar on al.isin = ar.stock_code and ar.asset_type = 'ISIN'
+       where al.cusip is not null)
+source on (target.stock_code = source.stock_code and target.asset_type = 'CUSIP')
+WHEN NOT MATCHED THEN
+insert (stock_id, stock_code, asset_type, description) values (source.stock_id,source.stock_code, 'CUSIP', source.description);
+
+merge into asset_register_links target using (
+select al.sedol as stock_code,
+       ar.stock_id,
+       ar.description from asset_lookup al
+       join asset_register_links ar on al.isin = ar.stock_code and ar.asset_type = 'ISIN'
+       where al.sedol is not null)
+source on (target.stock_code = source.stock_code and target.asset_type = 'SEDOL')
+WHEN NOT MATCHED THEN
+insert (stock_id, stock_code, asset_type, description) values (source.stock_id,source.stock_code, 'SEDOL', source.description);
+
+
+
+select * from asset_register_links where asset_type in ('CUSIP','SEDOL','ISIN')
+and stock_code in (select cusip from asset_lookup
+                        union
+                    select sedol from asset_lookup
+                        union
+                     select isin from asset_lookup) order by stock_id;
 
